@@ -1906,7 +1906,7 @@ export class ExpressApp {
         } else {
           cb(new Error('Not allowed by CORS'));
         }
-      },
+      }
     };
 
     router.post('/v1/moralis/getWalletTokenBalances', cors(moralisCorsOptions), (req, res) => {
@@ -1917,7 +1917,8 @@ export class ExpressApp {
         return returnError(ex, res, req);
       }
 
-      server.moralisGetWalletTokenBalances(req)
+      server
+        .moralisGetWalletTokenBalances(req)
         .then(response => {
           res.json(response);
         })
@@ -1934,7 +1935,8 @@ export class ExpressApp {
         return returnError(ex, res, req);
       }
 
-      server.moralisGetTokenAllowance(req)
+      server
+        .moralisGetTokenAllowance(req)
         .then(response => {
           res.json(response);
         })
@@ -1951,7 +1953,8 @@ export class ExpressApp {
         return returnError(ex, res, req);
       }
 
-      server.moralisGetNativeBalance(req)
+      server
+        .moralisGetNativeBalance(req)
         .then(response => {
           res.json(response);
         })

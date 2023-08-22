@@ -3,6 +3,9 @@ import { logger } from './lib/logger';
 
 const Config = () => {
   let defaultConfig = {
+    auth: {
+      useSignature: false
+    },
     basePath: '/bws/api',
     disableLogs: false,
     port: 3232,
@@ -142,7 +145,7 @@ const Config = () => {
           disabled: false,
           removed: false
         }
-      },
+      }
     },
     suspendedChains: [],
     staticRoot: '/tmp/static'

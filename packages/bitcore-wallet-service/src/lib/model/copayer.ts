@@ -2,6 +2,7 @@ import { Common } from '../common';
 import { Address } from './address';
 import { AddressManager } from './addressmanager';
 
+const config = require('../../config');
 const $ = require('preconditions').singleton();
 const sjcl = require('sjcl');
 const Constants = Common.Constants,
@@ -16,10 +17,10 @@ export interface ICopayer {
   id: string;
   name: string;
   requestPubKey: string;
-  signature: string;
+  signature?: string;
   requestPubKeys: Array<{
     key: string;
-    signature: string;
+    signature?: string;
   }>;
   customData: any;
 }
@@ -33,10 +34,10 @@ export class Copayer {
   id: string;
   name: string;
   requestPubKey: string;
-  signature: string;
+  signature?: string;
   requestPubKeys: Array<{
     key: string;
-    signature: string;
+    signature?: string;
   }>;
   customData: any;
   addressManager: AddressManager;
@@ -49,9 +50,14 @@ export class Copayer {
 
   static create(opts) {
     opts = opts || {};
-    $.checkArgument(opts.xPubKey, 'Missing copayer extended public key')
-      .checkArgument(opts.requestPubKey, 'Missing copayer request public key')
-      .checkArgument(opts.signature, 'Missing copayer request public key signature');
+    $.checkArgument(opts.xPubKey, 'Missing copayer extended public key').checkArgument(
+      opts.requestPubKey,
+      'Missing copayer request public key'
+    );
+
+    if (config.auth.useSignature) {
+      $.checkArgument(opts.signature, 'Missing copayer request public key signature');
+    }
 
     $.checkArgument(Utils.checkValueInCollection(opts.coin, Constants.CHAINS));
 
