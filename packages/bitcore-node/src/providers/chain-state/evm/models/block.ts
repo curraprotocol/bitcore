@@ -183,7 +183,12 @@ export class EVMBlockModel extends BaseBlock<IEVMBlock> {
     return JSON.stringify(transform);
   }
 
-  async getBlockSyncGaps(params: { chain: string; network: string; startHeight?: number, endHeight?: number }): Promise<number[]> {
+  async getBlockSyncGaps(params: {
+    chain: string;
+    network: string;
+    startHeight?: number;
+    endHeight?: number;
+  }): Promise<number[]> {
     const { chain, network, startHeight = 0, endHeight } = params;
     const self = this;
     return new Promise(async (resolve, reject) => {
@@ -200,7 +205,7 @@ export class EVMBlockModel extends BaseBlock<IEVMBlock> {
             height: heightQuery
           })
           .sort({ chain: 1, network: 1, processed: 1, height: -1 }) // guarantee index use by using this sort
-          .addCursorFlag('noCursorTimeout', true);
+          .addCursorFlag('noCursorTimeout', false);
 
         let block = (await stream.next()) as IEVMBlock;
         const maxBlock = block;
@@ -237,8 +242,14 @@ export class EVMBlockModel extends BaseBlock<IEVMBlock> {
             }
             prevBlock = block;
             block = (await stream.next()) as IEVMBlock;
-            while (block && prevBlock && block.height === prevBlock.height) { // uncaught reorg?
-              logger.error('Conflicting blocks found at height %o. %o <-> %o', block.height, block.hash, prevBlock.hash);
+            while (block && prevBlock && block.height === prevBlock.height) {
+              // uncaught reorg?
+              logger.error(
+                'Conflicting blocks found at height %o. %o <-> %o',
+                block.height,
+                block.hash,
+                prevBlock.hash
+              );
               block = (await stream.next()) as IEVMBlock;
             }
           }

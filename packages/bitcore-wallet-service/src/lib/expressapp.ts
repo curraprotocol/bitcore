@@ -598,6 +598,18 @@ export class ExpressApp {
       });
     });
 
+    router.get('/v3/txproposals', (req, res) => {
+      const server = getServer(req, res);
+      const opts = {
+        txProposalIds: req.query.ids.split(',')
+      };
+
+      server.getProposalsByIds(opts, (err, proposals) => {
+        if (err) return returnError(err, res, req);
+        res.json(proposals);
+      });
+    });
+
     // DEPRECATED
     router.post('/v1/txproposals/', (req, res) => {
       const Errors = require('./errors/errordefinitions');

@@ -46,7 +46,7 @@ export abstract class BaseBlock<T extends IBlock> extends BaseModel<T> {
       .sort({ height: -1 })
       .limit(100)
       .project({ hash: 1, previousBlockHash: 1, nextBlockHash: 1 })
-      .addCursorFlag('noCursorTimeout', true)
+      .addCursorFlag('noCursorTimeout', false)
       .toArray();
 
     for (let i = 0; i < locatorBlocks.length; i++) {

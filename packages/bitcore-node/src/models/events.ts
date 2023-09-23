@@ -50,15 +50,17 @@ export class EventModel extends BaseModel<IEvent> {
   }
 
   public getBlockTail(lastSeen: Date) {
-    return this.collection.find({ type: 'block', emitTime: { $gte: lastSeen } }).addCursorFlag('noCursorTimeout', true);
+    return this.collection
+      .find({ type: 'block', emitTime: { $gte: lastSeen } })
+      .addCursorFlag('noCursorTimeout', false);
   }
 
   public getTxTail(lastSeen: Date) {
-    return this.collection.find({ type: 'tx', emitTime: { $gte: lastSeen } }).addCursorFlag('noCursorTimeout', true);
+    return this.collection.find({ type: 'tx', emitTime: { $gte: lastSeen } }).addCursorFlag('noCursorTimeout', false);
   }
 
   getCoinTail(lastSeen: Date) {
-    return this.collection.find({ type: 'coin', emitTime: { $gte: lastSeen } }).addCursorFlag('noCursorTimeout', true);
+    return this.collection.find({ type: 'coin', emitTime: { $gte: lastSeen } }).addCursorFlag('noCursorTimeout', false);
   }
 }
 export const EventStorage = new EventModel();

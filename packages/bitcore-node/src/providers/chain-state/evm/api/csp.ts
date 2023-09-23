@@ -371,7 +371,7 @@ export class BaseEVMStateProvider extends InternalStateProvider implements IChai
     transactionStream = EVMTransactionStorage.collection
       .find(query)
       .sort({ blockTimeNormalized: 1 })
-      .addCursorFlag('noCursorTimeout', true);
+      .addCursorFlag('noCursorTimeout', false);
 
     if (!args.tokenAddress && wallet._id) {
       const internalTxTransform = new InternalTxRelatedFilterTransform(web3, wallet._id);
@@ -500,7 +500,7 @@ export class BaseEVMStateProvider extends InternalStateProvider implements IChai
           // Gas estimation might fail with `insufficient funds` if value is higher than balance for a normal send.
           // We want this method to give a blind fee estimation, though, so we should not include the value
           // unless it's needed for estimating smart contract execution.
-          _value = web3.utils.toHex(value)
+          _value = web3.utils.toHex(value);
         }
 
         const opts = {
@@ -532,7 +532,7 @@ export class BaseEVMStateProvider extends InternalStateProvider implements IChai
 
   async getBlocks(params: GetBlockParams) {
     const { query, options } = this.getBlocksQuery(params);
-    let cursor = EVMBlockStorage.collection.find(query, options).addCursorFlag('noCursorTimeout', true);
+    let cursor = EVMBlockStorage.collection.find(query, options).addCursorFlag('noCursorTimeout', false);
     if (options.sort) {
       cursor = cursor.sort(options.sort);
     }
@@ -564,8 +564,8 @@ export class BaseEVMStateProvider extends InternalStateProvider implements IChai
 
       try {
         await WalletAddressStorage.collection.bulkWrite(walletAddressInserts);
-      } catch (err: any) {
-        if (err.code !== 11000) {
+      } catch (err) {
+        if ((err as any).code !== 11000) {
           throw err;
         }
       }

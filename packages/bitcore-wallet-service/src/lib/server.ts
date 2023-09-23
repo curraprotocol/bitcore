@@ -2609,11 +2609,10 @@ export class WalletService implements IWalletService {
    * Publish an already created tx proposal so inputs are locked and other copayers in the wallet can see it.
    * @param {Object} opts
    * @param {string} opts.txProposalId - The tx id.
-   * @param {string} opts.proposalSignature - S(raw tx). Used by other copayers to verify the proposal.
    * @param {Boolean} [opts.noCashAddr] - do not use cashaddress for bch
    */
   publishTx(opts, cb) {
-    if (!checkRequired(opts, ['txProposalId', 'proposalSignature'], cb)) return;
+    if (!checkRequired(opts, ['txProposalId'], cb)) return;
 
     this._runLocked(cb, cb => {
       this.getWallet({}, (err, wallet) => {
@@ -2630,25 +2629,27 @@ export class WalletService implements IWalletService {
           if (!txp) return cb(Errors.TX_NOT_FOUND);
           if (!txp.isTemporary()) return cb(null, txp);
 
-          const copayer = wallet.getCopayer(this.copayerId);
+          // @NOTE: copayer functinality not needed for Curra application
+          // To simplify the process of signing we remove publish signature
 
-          let raw;
-          try {
-            raw = txp.getRawTx();
-          } catch (ex) {
-            return cb(ex);
-          }
-          const signingKey = this._getSigningKey(raw, opts.proposalSignature, copayer.requestPubKeys);
-          if (!signingKey) {
-            return cb(new ClientError('Invalid proposal signature'));
-          }
+          // const copayer = wallet.getCopayer(this.copayerId);
+          // let raw;
+          // try {
+          //   raw = txp.getRawTx();
+          // } catch (ex) {
+          //   return cb(ex);
+          // }
+          // const signingKey = this._getSigningKey(raw, opts.proposalSignature, copayer.requestPubKeys);
+          // if (!signingKey) {
+          //   return cb(new ClientError('Invalid proposal signature'));
+          // }
 
           // Save signature info for other copayers to check
-          txp.proposalSignature = opts.proposalSignature;
-          if (signingKey.selfSigned) {
-            txp.proposalSignaturePubKey = signingKey.key;
-            txp.proposalSignaturePubKeySig = signingKey.signature;
-          }
+          // txp.proposalSignature = opts.proposalSignature;
+          // if (signingKey.selfSigned) {
+          //   txp.proposalSignaturePubKey = signingKey.key;
+          //   txp.proposalSignaturePubKeySig = signingKey.signature;
+          // }
 
           ChainService.checkTxUTXOs(this, txp, opts, err => {
             if (err) return cb(err);
@@ -2690,6 +2691,19 @@ export class WalletService implements IWalletService {
         txp.note = note;
         return cb(null, txp);
       });
+    });
+  }
+
+  /**
+   * Retrieves a txs from storage by their ids.
+   * @param {Object} opts
+   * @param {string} opts.txProposalIds - The tx ids.
+   * @returns {Object} txProposal
+   */
+  getProposalsByIds(opts, cb) {
+    this.storage.fetchTxsByIds(opts.txProposalIds, (err, txps) => {
+      if (err) return cb(err);
+      return cb(null, txps);
     });
   }
 
@@ -2782,26 +2796,6 @@ export class WalletService implements IWalletService {
    */
   removePendingTx(opts, cb) {
     if (!checkRequired(opts, ['txProposalId'], cb)) return;
-
-    this._runLocked(cb, cb => {
-      this.getTx(
-        {
-          txProposalId: opts.txProposalId
-        },
-        (err, txp) => {
-          if (err) return cb(err);
-
-          if (!txp.isPending()) return cb(Errors.TX_NOT_PENDING);
-
-          const deleteLockTime = this.getRemainingDeleteLockTime(txp);
-          if (deleteLockTime > 0) return cb(Errors.TX_CANNOT_REMOVE);
-
-          this.storage.removeTx(this.walletId, txp.id, () => {
-            this._notifyTxProposalAction('TxProposalRemoved', txp, cb);
-          });
-        }
-      );
-    });
   }
 
   _broadcastRawTx(chain, network, raw, cb) {

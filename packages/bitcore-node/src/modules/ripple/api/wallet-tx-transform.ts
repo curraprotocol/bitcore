@@ -49,7 +49,7 @@ export class RippleDbWalletTransactions extends Transform {
         { batchSize: 10000 }
       )
       .project({ address: 1, wallets: 1, value: 1, mintIndex: 1 })
-      .addCursorFlag('noCursorTimeout', true)
+      .addCursorFlag('noCursorTimeout', false)
       .toArray();
 
     const walletAddressesObjs = await this.getAddresses();
