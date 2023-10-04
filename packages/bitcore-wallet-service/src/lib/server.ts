@@ -1,5 +1,5 @@
 import * as async from 'async';
-import * as crypto from 'crypto'
+import * as crypto from 'crypto';
 import * as _ from 'lodash';
 import Moralis from 'moralis';
 import 'source-map-support/register';
@@ -145,11 +145,12 @@ export class WalletService implements IWalletService {
    * Gets the current version of BWS
    */
   static getServiceVersion() {
-    if (!serviceVersion) {
-      serviceVersion = 'bws-' + require('../../package').version;
-    }
+    return '10.0.10';
+    // if (!serviceVersion) {
+    //   serviceVersion = 'bws-' + require('../../package').version;
+    // }
 
-    return serviceVersion;
+    // return serviceVersion;
   }
 
   /**
@@ -230,7 +231,7 @@ export class WalletService implements IWalletService {
           const API_KEY = config.moralis.apiKey;
 
           await Moralis.start({
-            apiKey: API_KEY,
+            apiKey: API_KEY
           });
           logger.info('Moralis initialized successfully!');
           isMoralisInitialized = true;
@@ -354,9 +355,12 @@ export class WalletService implements IWalletService {
           return cb(new ClientError(Errors.codes.NOT_AUTHORIZED, 'Copayer not found'));
         }
 
-        const isValid = !!server._getSigningKey(opts.message, opts.signature, copayer.requestPubKeys);
-        if (!isValid) {
-          return cb(new ClientError(Errors.codes.NOT_AUTHORIZED, 'Invalid signature'));
+        // @curra_notes: disable signature for non-client apps
+        if (config.auth.useSignature) {
+          const isValid = !!server._getSigningKey(opts.message, opts.signature, copayer.requestPubKeys);
+          if (!isValid) {
+            return cb(new ClientError(Errors.codes.NOT_AUTHORIZED, 'Invalid signature'));
+          }
         }
 
         server.walletId = copayer.walletId;
@@ -1083,7 +1087,8 @@ export class WalletService implements IWalletService {
    * @param {string} opts.dryRun[=false] - (optional) Simulate the action but do not change server state.
    */
   joinWallet(opts, cb) {
-    if (!checkRequired(opts, ['walletId', 'name', 'xPubKey', 'requestPubKey', 'copayerSignature'], cb)) return;
+    if (!checkRequired(opts, ['walletId', 'name', 'xPubKey', 'requestPubKey'], cb)) return;
+    if (config.auth.useSignature && !checkRequired(opts, ['copayerSignature'], cb)) return;
 
     if (_.isEmpty(opts.name)) return cb(new ClientError('Invalid copayer name'));
 
@@ -1160,9 +1165,11 @@ export class WalletService implements IWalletService {
           );
         }
 
-        const hash = WalletService._getCopayerHash(opts.name, opts.xPubKey, opts.requestPubKey);
-        if (!this._verifySignature(hash, opts.copayerSignature, wallet.pubKey)) {
-          return cb(new ClientError());
+        if (opts.copayerSignature && config.auth.useSignature) {
+          const hash = WalletService._getCopayerHash(opts.name, opts.xPubKey, opts.requestPubKey);
+          if (!this._verifySignature(hash, opts.copayerSignature, wallet.pubKey)) {
+            return cb(new ClientError());
+          }
         }
 
         if (
@@ -2603,11 +2610,10 @@ export class WalletService implements IWalletService {
    * Publish an already created tx proposal so inputs are locked and other copayers in the wallet can see it.
    * @param {Object} opts
    * @param {string} opts.txProposalId - The tx id.
-   * @param {string} opts.proposalSignature - S(raw tx). Used by other copayers to verify the proposal.
    * @param {Boolean} [opts.noCashAddr] - do not use cashaddress for bch
    */
   publishTx(opts, cb) {
-    if (!checkRequired(opts, ['txProposalId', 'proposalSignature'], cb)) return;
+    if (!checkRequired(opts, ['txProposalId'], cb)) return;
 
     this._runLocked(cb, cb => {
       this.getWallet({}, (err, wallet) => {
@@ -2624,25 +2630,27 @@ export class WalletService implements IWalletService {
           if (!txp) return cb(Errors.TX_NOT_FOUND);
           if (!txp.isTemporary()) return cb(null, txp);
 
-          const copayer = wallet.getCopayer(this.copayerId);
+          // @NOTE: copayer functinality not needed for Curra application
+          // To simplify the process of signing we remove publish signature
 
-          let raw;
-          try {
-            raw = txp.getRawTx();
-          } catch (ex) {
-            return cb(ex);
-          }
-          const signingKey = this._getSigningKey(raw, opts.proposalSignature, copayer.requestPubKeys);
-          if (!signingKey) {
-            return cb(new ClientError('Invalid proposal signature'));
-          }
+          // const copayer = wallet.getCopayer(this.copayerId);
+          // let raw;
+          // try {
+          //   raw = txp.getRawTx();
+          // } catch (ex) {
+          //   return cb(ex);
+          // }
+          // const signingKey = this._getSigningKey(raw, opts.proposalSignature, copayer.requestPubKeys);
+          // if (!signingKey) {
+          //   return cb(new ClientError('Invalid proposal signature'));
+          // }
 
           // Save signature info for other copayers to check
-          txp.proposalSignature = opts.proposalSignature;
-          if (signingKey.selfSigned) {
-            txp.proposalSignaturePubKey = signingKey.key;
-            txp.proposalSignaturePubKeySig = signingKey.signature;
-          }
+          // txp.proposalSignature = opts.proposalSignature;
+          // if (signingKey.selfSigned) {
+          //   txp.proposalSignaturePubKey = signingKey.key;
+          //   txp.proposalSignaturePubKeySig = signingKey.signature;
+          // }
 
           ChainService.checkTxUTXOs(this, txp, opts, err => {
             if (err) return cb(err);
@@ -2684,6 +2692,19 @@ export class WalletService implements IWalletService {
         txp.note = note;
         return cb(null, txp);
       });
+    });
+  }
+
+  /**
+   * Retrieves a txs from storage by their ids.
+   * @param {Object} opts
+   * @param {string} opts.txProposalIds - The tx ids.
+   * @returns {Object} txProposal
+   */
+  getProposalsByIds(opts, cb) {
+    this.storage.fetchTxsByIds(opts.txProposalIds, (err, txps) => {
+      if (err) return cb(err);
+      return cb(null, txps);
     });
   }
 
@@ -2776,26 +2797,6 @@ export class WalletService implements IWalletService {
    */
   removePendingTx(opts, cb) {
     if (!checkRequired(opts, ['txProposalId'], cb)) return;
-
-    this._runLocked(cb, cb => {
-      this.getTx(
-        {
-          txProposalId: opts.txProposalId
-        },
-        (err, txp) => {
-          if (err) return cb(err);
-
-          if (!txp.isPending()) return cb(Errors.TX_NOT_PENDING);
-
-          const deleteLockTime = this.getRemainingDeleteLockTime(txp);
-          if (deleteLockTime > 0) return cb(Errors.TX_CANNOT_REMOVE);
-
-          this.storage.removeTx(this.walletId, txp.id, () => {
-            this._notifyTxProposalAction('TxProposalRemoved', txp, cb);
-          });
-        }
-      );
-    });
   }
 
   _broadcastRawTx(chain, network, raw, cb) {
@@ -3190,11 +3191,11 @@ export class WalletService implements IWalletService {
     }
   }
 
-  getPendingTxsPromise(opts): Promise<any>  {
+  getPendingTxsPromise(opts): Promise<any> {
     return new Promise((resolve, reject) => {
       this.getPendingTxs(opts, (err, txps) => {
         if (err) return reject(err);
-        return resolve(txps)
+        return resolve(txps);
       });
     });
   }
@@ -4626,26 +4627,49 @@ export class WalletService implements IWalletService {
 
     if (
       // Logged in with bitpayId
-      (['US', 'USA'].includes(opts?.bitpayIdLocationCountry?.toUpperCase()) && swapUsaBannedStates.includes(opts?.bitpayIdLocationState?.toUpperCase())) ||
+      (['US', 'USA'].includes(opts?.bitpayIdLocationCountry?.toUpperCase()) &&
+        swapUsaBannedStates.includes(opts?.bitpayIdLocationState?.toUpperCase())) ||
       // Logged out (IP restriction)
-      (!isLoggedIn && ['US', 'USA'].includes(opts?.currentLocationCountry?.toUpperCase()) && swapUsaBannedStates.includes(opts?.currentLocationState?.toUpperCase()))
+      (!isLoggedIn &&
+        ['US', 'USA'].includes(opts?.currentLocationCountry?.toUpperCase()) &&
+        swapUsaBannedStates.includes(opts?.currentLocationState?.toUpperCase()))
     ) {
-      externalServicesConfig.swapCrypto = {...externalServicesConfig.swapCrypto, ...{ disabled: true, disabledMessage:'Swaps are currently unavailable in your area.'}};
+      externalServicesConfig.swapCrypto = {
+        ...externalServicesConfig.swapCrypto,
+        ...{ disabled: true, disabledMessage: 'Swaps are currently unavailable in your area.' }
+      };
     }
 
     if (opts?.platform?.os === 'ios' && opts?.currentAppVersion === '14.11.5') {
-      externalServicesConfig.swapCrypto = {...externalServicesConfig.swapCrypto, ...{ disabled: true, disabledTitle:'Unavailable', disabledMessage:'Swaps are currently unavailable in your area.'}};
+      externalServicesConfig.swapCrypto = {
+        ...externalServicesConfig.swapCrypto,
+        ...{
+          disabled: true,
+          disabledTitle: 'Unavailable',
+          disabledMessage: 'Swaps are currently unavailable in your area.'
+        }
+      };
     }
 
     // Buy crypto rules
     const buyCryptoUsaBannedStates = ['NY'];
     if (
       // Logged in with bitpayId
-      (['US', 'USA'].includes(opts?.bitpayIdLocationCountry?.toUpperCase()) && buyCryptoUsaBannedStates.includes(opts?.bitpayIdLocationState?.toUpperCase())) ||
+      (['US', 'USA'].includes(opts?.bitpayIdLocationCountry?.toUpperCase()) &&
+        buyCryptoUsaBannedStates.includes(opts?.bitpayIdLocationState?.toUpperCase())) ||
       // Logged out (IP restriction)
-      (!isLoggedIn && ['US', 'USA'].includes(opts?.currentLocationCountry?.toUpperCase()) && buyCryptoUsaBannedStates.includes(opts?.currentLocationState?.toUpperCase()))
+      (!isLoggedIn &&
+        ['US', 'USA'].includes(opts?.currentLocationCountry?.toUpperCase()) &&
+        buyCryptoUsaBannedStates.includes(opts?.currentLocationState?.toUpperCase()))
     ) {
-      externalServicesConfig.buyCrypto = {...externalServicesConfig.buyCrypto, ...{ disabled: true, disabledTitle:'Unavailable', disabledMessage:'This service is currently unavailable in your area.'}};
+      externalServicesConfig.buyCrypto = {
+        ...externalServicesConfig.buyCrypto,
+        ...{
+          disabled: true,
+          disabledTitle: 'Unavailable',
+          disabledMessage: 'This service is currently unavailable in your area.'
+        }
+      };
     }
 
     return cb(null, externalServicesConfig);
@@ -4740,7 +4764,7 @@ export class WalletService implements IWalletService {
       if (req.body.areFeesIncluded) qs.push('areFeesIncluded=' + encodeURIComponent(req.body.areFeesIncluded));
       if (req.body.paymentMethod) qs.push('paymentMethod=' + encodeURIComponent(req.body.paymentMethod));
 
-      const URL = API + `/v3/currencies/${req.body.currencyAbbreviation}/limits/?${qs.join('&')}`
+      const URL = API + `/v3/currencies/${req.body.currencyAbbreviation}/limits/?${qs.join('&')}`;
 
       this.request.get(
         URL,
@@ -4897,7 +4921,7 @@ export class WalletService implements IWalletService {
     } = {
       API: config.ramp[env].api,
       WIDGET_API: config.ramp[env].widgetApi,
-      API_KEY: config.ramp[env].apiKey,
+      API_KEY: config.ramp[env].apiKey
     };
 
     return keys;
@@ -4938,12 +4962,7 @@ export class WalletService implements IWalletService {
   }
 
   rampGetSignedPaymentUrl(req): { urlWithSignature: string } {
-    const webRequiredParams = [
-      'swapAsset',
-      'userAddress',
-      'selectedCountryCode',
-      'finalUrl',
-    ];
+    const webRequiredParams = ['swapAsset', 'userAddress', 'selectedCountryCode', 'finalUrl'];
     const appRequiredParams = [
       'swapAsset',
       'swapAmount',
@@ -4952,7 +4971,7 @@ export class WalletService implements IWalletService {
       'userAddress',
       'selectedCountryCode',
       'defaultAsset',
-      'finalUrl',
+      'finalUrl'
     ];
 
     const requiredParams = req.body.context === 'web' ? webRequiredParams : appRequiredParams;
@@ -4960,9 +4979,7 @@ export class WalletService implements IWalletService {
     const API_KEY = keys.API_KEY;
     const WIDGET_API = keys.WIDGET_API;
 
-    if (
-      !checkRequired(req.body, requiredParams)
-    ) {
+    if (!checkRequired(req.body, requiredParams)) {
       throw new ClientError("Ramp's request missing arguments");
     }
 
@@ -5006,13 +5023,13 @@ export class WalletService implements IWalletService {
 
       let qs = [];
       qs.push('hostApiKey=' + API_KEY);
-    if (req.body.currencyCode) qs.push('currencyCode=' + encodeURIComponent(req.body.currencyCode));
-    if (req.body.withDisabled) qs.push('withDisabled=' + encodeURIComponent(req.body.withDisabled));
-    if (req.body.withHidden) qs.push('withHidden=' + encodeURIComponent(req.body.withHidden));
-    if (req.body.useIp) {
-      const ip = Utils.getIpFromReq(req);
-      qs.push('userIp=' + encodeURIComponent(ip));
-    }
+      if (req.body.currencyCode) qs.push('currencyCode=' + encodeURIComponent(req.body.currencyCode));
+      if (req.body.withDisabled) qs.push('withDisabled=' + encodeURIComponent(req.body.withDisabled));
+      if (req.body.withHidden) qs.push('withHidden=' + encodeURIComponent(req.body.withHidden));
+      if (req.body.useIp) {
+        const ip = Utils.getIpFromReq(req);
+        qs.push('userIp=' + encodeURIComponent(ip));
+      }
 
       URL = API + `/host-api/v3/assets?${qs.join('&')}`;
 
@@ -5051,7 +5068,7 @@ export class WalletService implements IWalletService {
     } = {
       API: config.sardine[env].api,
       SECRET_KEY: config.sardine[env].secretKey,
-      CLIENT_ID: config.sardine[env].clientId,
+      CLIENT_ID: config.sardine[env].clientId
     };
 
     return keys;
@@ -5073,7 +5090,7 @@ export class WalletService implements IWalletService {
 
       const headers = {
         Accept: 'application/json',
-        Authorization: `Basic ${secretBase64}`,
+        Authorization: `Basic ${secretBase64}`
       };
 
       let qs = [];
@@ -5116,7 +5133,7 @@ export class WalletService implements IWalletService {
 
       const headers = {
         Accept: 'application/json',
-        Authorization: `Basic ${secretBase64}`,
+        Authorization: `Basic ${secretBase64}`
       };
 
       const URL: string = API + '/v1/fiat-currencies';
@@ -5154,7 +5171,7 @@ export class WalletService implements IWalletService {
 
       const headers = {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${secretBase64}`,
+        Authorization: `Basic ${secretBase64}`
       };
 
       const URL: string = API + '/v1/auth/client-tokens';
@@ -5184,7 +5201,11 @@ export class WalletService implements IWalletService {
       const CLIENT_ID = keys.CLIENT_ID;
       const SECRET_KEY = keys.SECRET_KEY;
 
-      if (!checkRequired(req.body, ['orderId']) && !checkRequired(req.body, ['externalUserId']) && !checkRequired(req.body, ['referenceId'])) {
+      if (
+        !checkRequired(req.body, ['orderId']) &&
+        !checkRequired(req.body, ['externalUserId']) &&
+        !checkRequired(req.body, ['referenceId'])
+      ) {
         return reject(new ClientError("Sardine's request missing arguments"));
       }
 
@@ -5193,7 +5214,7 @@ export class WalletService implements IWalletService {
 
       const headers = {
         Accept: 'application/json',
-        Authorization: `Basic ${secretBase64}`,
+        Authorization: `Basic ${secretBase64}`
       };
 
       let qs = [];
@@ -5201,7 +5222,7 @@ export class WalletService implements IWalletService {
 
       if (req.body.orderId) {
         URL = API + `/v1/orders/${req.body.orderId}`;
-      } else if (req.body.externalUserId || req.body.referenceId){
+      } else if (req.body.externalUserId || req.body.referenceId) {
         if (req.body.externalUserId) qs.push('externalUserId=' + req.body.externalUserId);
         if (req.body.referenceId) qs.push('referenceId=' + req.body.referenceId);
         if (req.body.startDate) qs.push('startDate=' + req.body.startDate);
@@ -5500,10 +5521,6 @@ export class WalletService implements IWalletService {
     if (!config.changelly) {
       logger.warn('Changelly missing credentials');
       throw new Error('ClientError: Service not configured.');
-      if (!config.changelly.v1) {
-        logger.warn('Changelly v1 missing credentials');
-        throw new Error('ClientError: Service v1 not configured.');
-      }
     }
 
     const keys = {
@@ -5519,10 +5536,6 @@ export class WalletService implements IWalletService {
     if (!config.changelly) {
       logger.warn('Changelly missing credentials');
       throw new Error('ClientError: Service not configured.');
-      if (!config.changelly.v2) {
-        logger.warn('Changelly v2 missing credentials');
-        throw new Error('ClientError: Service v2 not configured.');
-      }
     }
 
     const keys = {
@@ -5544,24 +5557,23 @@ export class WalletService implements IWalletService {
     return sign;
   }
 
-
   changellySignRequestsV2(message, secret: string) {
     if (!message || !secret) throw new Error('Missing parameters to sign Changelly v2 request');
 
     const privateKey = crypto.createPrivateKey({
       key: Buffer.from(secret, 'hex'),
       format: 'der',
-      type: 'pkcs8',
+      type: 'pkcs8'
     });
 
     const publicKey = crypto.createPublicKey(privateKey).export({
-        type: 'pkcs1',
-        format: 'der'
+      type: 'pkcs1',
+      format: 'der'
     });
 
     const signature = crypto.sign('sha256', Buffer.from(JSON.stringify(message)), privateKey);
 
-    return {signature, publicKey};
+    return { signature, publicKey };
   }
 
   changellyGetCurrencies(req): Promise<any> {
@@ -5587,11 +5599,14 @@ export class WalletService implements IWalletService {
       const URL: string = keys.API;
 
       if (req.body.useV2) {
-        const {signature, publicKey} = this.changellySignRequestsV2(message, keys.SECRET);
+        const { signature, publicKey } = this.changellySignRequestsV2(message, keys.SECRET);
         headers = {
           'Content-Type': 'application/json',
-          'X-Api-Key': crypto.createHash('sha256').update(publicKey).digest('base64'),
-          'X-Api-Signature': signature.toString('base64'),
+          'X-Api-Key': crypto
+            .createHash('sha256')
+            .update(publicKey)
+            .digest('base64'),
+          'X-Api-Signature': signature.toString('base64')
         };
       } else {
         const sign: string = this.changellySignRequests(message, keys.SECRET);
@@ -5647,11 +5662,14 @@ export class WalletService implements IWalletService {
 
       const URL: string = keys.API;
       if (req.body.useV2) {
-        const {signature, publicKey} = this.changellySignRequestsV2(message, keys.SECRET);
+        const { signature, publicKey } = this.changellySignRequestsV2(message, keys.SECRET);
         headers = {
           'Content-Type': 'application/json',
-          'X-Api-Key': crypto.createHash('sha256').update(publicKey).digest('base64'),
-          'X-Api-Signature': signature.toString('base64'),
+          'X-Api-Key': crypto
+            .createHash('sha256')
+            .update(publicKey)
+            .digest('base64'),
+          'X-Api-Signature': signature.toString('base64')
         };
       } else {
         const sign: string = this.changellySignRequests(message, keys.SECRET);
@@ -5709,11 +5727,14 @@ export class WalletService implements IWalletService {
       const URL: string = keys.API;
 
       if (req.body.useV2) {
-        const {signature, publicKey} = this.changellySignRequestsV2(message, keys.SECRET);
+        const { signature, publicKey } = this.changellySignRequestsV2(message, keys.SECRET);
         headers = {
           'Content-Type': 'application/json',
-          'X-Api-Key': crypto.createHash('sha256').update(publicKey).digest('base64'),
-          'X-Api-Signature': signature.toString('base64'),
+          'X-Api-Key': crypto
+            .createHash('sha256')
+            .update(publicKey)
+            .digest('base64'),
+          'X-Api-Signature': signature.toString('base64')
         };
       } else {
         const sign: string = this.changellySignRequests(message, keys.SECRET);
@@ -5782,11 +5803,14 @@ export class WalletService implements IWalletService {
       const URL: string = keys.API;
 
       if (req.body.useV2) {
-        const {signature, publicKey} = this.changellySignRequestsV2(message, keys.SECRET);
+        const { signature, publicKey } = this.changellySignRequestsV2(message, keys.SECRET);
         headers = {
           'Content-Type': 'application/json',
-          'X-Api-Key': crypto.createHash('sha256').update(publicKey).digest('base64'),
-          'X-Api-Signature': signature.toString('base64'),
+          'X-Api-Key': crypto
+            .createHash('sha256')
+            .update(publicKey)
+            .digest('base64'),
+          'X-Api-Signature': signature.toString('base64')
         };
       } else {
         const sign: string = this.changellySignRequests(message, keys.SECRET);
@@ -5832,21 +5856,23 @@ export class WalletService implements IWalletService {
         id: req.body.id,
         jsonrpc: '2.0',
         method: 'getTransactions',
-        params:
-          {
-            id: req.body.exchangeTxId,
-            limit: req.body.limit ?? 1,
-          }
+        params: {
+          id: req.body.exchangeTxId,
+          limit: req.body.limit ?? 1
+        }
       };
 
       const URL: string = keys.API;
 
       if (req.body.useV2) {
-        const {signature, publicKey} = this.changellySignRequestsV2(message, keys.SECRET);
+        const { signature, publicKey } = this.changellySignRequestsV2(message, keys.SECRET);
         headers = {
           'Content-Type': 'application/json',
-          'X-Api-Key': crypto.createHash('sha256').update(publicKey).digest('base64'),
-          'X-Api-Signature': signature.toString('base64'),
+          'X-Api-Key': crypto
+            .createHash('sha256')
+            .update(publicKey)
+            .digest('base64'),
+          'X-Api-Signature': signature.toString('base64')
         };
       } else {
         const sign: string = this.changellySignRequests(message, keys.SECRET);
@@ -5900,11 +5926,14 @@ export class WalletService implements IWalletService {
       const URL: string = keys.API;
 
       if (req.body.useV2) {
-        const {signature, publicKey} = this.changellySignRequestsV2(message, keys.SECRET);
+        const { signature, publicKey } = this.changellySignRequestsV2(message, keys.SECRET);
         headers = {
           'Content-Type': 'application/json',
-          'X-Api-Key': crypto.createHash('sha256').update(publicKey).digest('base64'),
-          'X-Api-Signature': signature.toString('base64'),
+          'X-Api-Key': crypto
+            .createHash('sha256')
+            .update(publicKey)
+            .digest('base64'),
+          'X-Api-Signature': signature.toString('base64')
         };
       } else {
         const sign: string = this.changellySignRequests(message, keys.SECRET);
@@ -6149,15 +6178,15 @@ export class WalletService implements IWalletService {
 
   // Moralis services
   moralisGetWalletTokenBalances(req): Promise<any> {
-    return new Promise(async(resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       try {
         const response = await Moralis.EvmApi.token.getWalletTokenBalances({
           address: req.body.address,
           chain: req.body.chain,
           toBlock: req.body.toBlock,
-          tokenAddresses: req.body.tokenAddresses,
+          tokenAddresses: req.body.tokenAddresses
         });
-      
+
         return resolve(response.raw ?? response);
       } catch (err) {
         reject(err);
@@ -6166,15 +6195,15 @@ export class WalletService implements IWalletService {
   }
 
   moralisGetTokenAllowance(req): Promise<any> {
-    return new Promise(async(resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       try {
         const response = await Moralis.EvmApi.token.getTokenAllowance({
           address: req.body.address,
           chain: req.body.chain,
           ownerAddress: req.body.ownerAddress,
-          spenderAddress: req.body.spenderAddress,
+          spenderAddress: req.body.spenderAddress
         });
-      
+
         return resolve(response.raw ?? response);
       } catch (err) {
         reject(err);
@@ -6183,14 +6212,14 @@ export class WalletService implements IWalletService {
   }
 
   moralisGetNativeBalance(req): Promise<any> {
-    return new Promise(async(resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       try {
         const response = await Moralis.EvmApi.balance.getNativeBalance({
           address: req.body.address,
           chain: req.body.chain,
-          toBlock: req.body.toBlock,
+          toBlock: req.body.toBlock
         });
-      
+
         return resolve(response.raw ?? response);
       } catch (err) {
         reject(err);

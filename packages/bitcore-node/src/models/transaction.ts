@@ -598,7 +598,9 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
   async findAllRelatedOutputs(forTx: string) {
     const seen = {};
     const allRelatedCoins: ICoin[] = [];
-    const txCoins = await CoinStorage.collection.find({ mintTxid: forTx, mintHeight: { $ne: SpentHeightIndicators.conflicting } }).toArray();
+    const txCoins = await CoinStorage.collection
+      .find({ mintTxid: forTx, mintHeight: { $ne: SpentHeightIndicators.conflicting } })
+      .toArray();
     for (let coin of txCoins) {
       allRelatedCoins.push(coin);
       seen[coin.mintTxid] = true;
@@ -612,14 +614,17 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
 
   async *yieldRelatedOutputs(forTx: string): AsyncGenerator<ICoin> {
     const seen = {};
-    const batchStream = CoinStorage.collection.find({ mintTxid: forTx, mintHeight: { $ne: SpentHeightIndicators.conflicting } });
+    const batchStream = CoinStorage.collection.find({
+      mintTxid: forTx,
+      mintHeight: { $ne: SpentHeightIndicators.conflicting }
+    });
     let coin: ICoin | null;
-    while (coin = (await batchStream.next())) {
+    while ((coin = await batchStream.next())) {
       seen[coin.mintTxid] = true;
       yield coin;
-      
+
       if (coin.spentTxid && !seen[coin.spentTxid]) {
-        yield * this.yieldRelatedOutputs(coin.spentTxid);
+        yield* this.yieldRelatedOutputs(coin.spentTxid);
         seen[coin.spentTxid] = true;
       }
     }
@@ -673,9 +678,9 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
   async _invalidateTx(params: {
     chain: string;
     network: string;
-    invalidTxid: string,
-    replacedByTxid?: string // only provided at the beginning of the ancestral tree. Txs that spend unconfirmed outputs aren't "replaced"
-    invalidParentTxids?: string[] // empty at the beginning of the ancestral tree. 
+    invalidTxid: string;
+    replacedByTxid?: string; // only provided at the beginning of the ancestral tree. Txs that spend unconfirmed outputs aren't "replaced"
+    invalidParentTxids?: string[]; // empty at the beginning of the ancestral tree.
   }) {
     const { chain, network, invalidTxid, replacedByTxid, invalidParentTxids = [] } = params;
     const spentOutputsQuery = {
@@ -695,7 +700,12 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
         continue;
       }
       // invalidate descendent tx (tx spending unconfirmed UTXO)
-      await this._invalidateTx({ chain, network, invalidTxid: output.spentTxid, invalidParentTxids: [...invalidParentTxids, invalidTxid] });
+      await this._invalidateTx({
+        chain,
+        network,
+        invalidTxid: output.spentTxid,
+        invalidParentTxids: [...invalidParentTxids, invalidTxid]
+      });
     }
 
     const setTx: { blockHeight: number; replacedByTxid?: string } = { blockHeight: SpentHeightIndicators.conflicting };
@@ -703,12 +713,10 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
       setTx.replacedByTxid = replacedByTxid;
     }
 
+    // TRANSACTION invalidate
     await Promise.all([
       // Tx
-      this.collection.updateMany(
-        { chain, network, txid: invalidTxid },
-        { $set: setTx }
-      ),
+      this.collection.updateMany({ chain, network, txid: invalidTxid }, { $set: setTx }),
       // Tx Outputs
       CoinStorage.collection.updateMany(
         { chain, network, mintTxid: invalidTxid },
@@ -717,7 +725,13 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
       // Tx Inputs
       CoinStorage.collection.updateMany(
         // the `mintTxid: { $nin: invalidParentTxids }` ensures that an invalid parent tx's outputs aren't marked "unspent"
-        { chain, network, spentTxid: invalidTxid, mintTxid: { $nin: invalidParentTxids }, spentHeight: SpentHeightIndicators.pending },
+        {
+          chain,
+          network,
+          spentTxid: invalidTxid,
+          mintTxid: { $nin: invalidParentTxids },
+          spentHeight: SpentHeightIndicators.pending
+        },
         { $set: { spentHeight: SpentHeightIndicators.unspent, spentTxid: '' } }
       )
     ]);
@@ -742,7 +756,7 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
       value: tx.value || -1
     };
     if (tx.blockHeight === SpentHeightIndicators.conflicting) {
-      transaction.replacedByTxid = tx.replacedByTxid || ''
+      transaction.replacedByTxid = tx.replacedByTxid || '';
     }
     if (options && options.object) {
       return transaction;

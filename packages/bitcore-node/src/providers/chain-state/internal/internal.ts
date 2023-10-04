@@ -110,7 +110,7 @@ export class InternalStateProvider implements IChainStateService {
 
   async getBlocks(params: GetBlockParams): Promise<Array<IBlock>> {
     const { query, options } = this.getBlocksQuery(params);
-    let cursor = BitcoinBlockStorage.collection.find(query, options).addCursorFlag('noCursorTimeout', true);
+    let cursor = BitcoinBlockStorage.collection.find(query, options).addCursorFlag('noCursorTimeout', false);
     if (options.sort) {
       cursor = cursor.sort(options.sort);
     }
@@ -326,7 +326,7 @@ export class InternalStateProvider implements IChainStateService {
     const wallet = await WalletStorage.collection.findOne({ pubKey });
     const walletId = wallet!._id!;
     const query = { chain, network, wallets: walletId, spentHeight: { $gte: SpentHeightIndicators.minimum } };
-    const cursor = CoinStorage.collection.find(query).addCursorFlag('noCursorTimeout', true);
+    const cursor = CoinStorage.collection.find(query).addCursorFlag('noCursorTimeout', false);
     const seen = {};
     const stringifyWallets = (wallets: Array<ObjectId>) => wallets.map(w => w.toHexString());
     const allMissingAddresses = new Array<string>();
@@ -340,7 +340,7 @@ export class InternalStateProvider implements IChainStateService {
             // find coins that were spent with my coins
             const spends = await CoinStorage.collection
               .find({ chain, network, spentTxid: spentCoin.spentTxid })
-              .addCursorFlag('noCursorTimeout', true)
+              .addCursorFlag('noCursorTimeout', false)
               .toArray();
             const missing = spends
               .filter(coin => !stringifyWallets(coin.wallets).includes(walletId.toHexString()))
@@ -413,7 +413,7 @@ export class InternalStateProvider implements IChainStateService {
     const transactionStream = TransactionStorage.collection
       .find(query)
       .sort({ blockTimeNormalized: 1 })
-      .addCursorFlag('noCursorTimeout', true);
+      .addCursorFlag('noCursorTimeout', false);
     const listTransactionsStream = new this.WalletStreamTransform(wallet);
     transactionStream.pipe(listTransactionsStream).pipe(res);
   }
@@ -493,7 +493,7 @@ export class InternalStateProvider implements IChainStateService {
         network,
         spentTxid: txid
       })
-      .addCursorFlag('noCursorTimeout', true)
+      .addCursorFlag('noCursorTimeout', false)
       .toArray();
 
     const outputs = await CoinStorage.collection
@@ -502,7 +502,7 @@ export class InternalStateProvider implements IChainStateService {
         network,
         mintTxid: txid
       })
-      .addCursorFlag('noCursorTimeout', true)
+      .addCursorFlag('noCursorTimeout', false)
       .toArray();
 
     return {
@@ -599,7 +599,7 @@ export class InternalStateProvider implements IChainStateService {
           };
     const locatorBlocks = await BitcoinBlockStorage.collection
       .find(query, { sort: { height: -1 }, limit: 30 })
-      .addCursorFlag('noCursorTimeout', true)
+      .addCursorFlag('noCursorTimeout', false)
       .toArray();
     if (locatorBlocks.length < 2) {
       return [Array(65).join('0')];
@@ -649,7 +649,7 @@ export class InternalStateProvider implements IChainStateService {
     let query = { chain: this.chain, wallet: walletId };
     return WalletAddressStorage.collection
       .find(query)
-      .addCursorFlag('noCursorTimeout', true)
+      .addCursorFlag('noCursorTimeout', false)
       .toArray();
   }
 }

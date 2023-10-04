@@ -1,4 +1,4 @@
-import * as os from 'os';
+// import * as os from 'os';
 import logger from '../logger';
 import { BaseBlock } from '../models/baseBlock';
 import { StateStorage } from '../models/state';
@@ -75,16 +75,21 @@ export class BaseP2PWorker<T extends IBlock = IBlock> {
   async stop(): Promise<any> {}
   async sync(): Promise<any> {}
 
+  // @CURRA: This is a temporary change.
   getIsSyncingNode(): boolean {
-    if (!this.lastHeartBeat) {
-      return false;
-    }
-    const [hostname, pid, timestamp] = this.lastHeartBeat.split(':');
-    const hostNameMatches = hostname === os.hostname();
-    const pidMatches = pid === process.pid.toString();
-    const timestampIsFresh = Date.now() - parseInt(timestamp) < 5 * 60 * 1000;
-    const amSyncingNode = hostNameMatches && pidMatches && timestampIsFresh;
-    return amSyncingNode;
+    return true;
+    // if (!this.lastHeartBeat) {
+    //   return false;
+    // }
+    // const [hostname, pid, timestamp] = this.lastHeartBeat.split(':');
+    // const hostNameMatches = hostname === os.hostname();
+    // const pidMatches = pid === process.pid.toString();
+    // const timestampIsFresh = Date.now() - parseInt(timestamp) < 5 * 60 * 1000;
+    // const amSyncingNode = hostNameMatches && pidMatches && timestampIsFresh;
+    // if (!amSyncingNode) {
+    //   logger.info(`Current node identifier: ${os.hostname()}:${process.pid}:${Date.now()}`);
+    // }
+    // return amSyncingNode;
   }
 
   async waitTilSync() {
@@ -145,7 +150,7 @@ export class BaseP2PWorker<T extends IBlock = IBlock> {
           lastHeartBeat: this.lastHeartBeat
         });
       }
-    } catch (e: any) {
+    } catch (e) {
       logger.warn('Issue unregistering');
       logger.error('%o', e);
     }

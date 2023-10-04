@@ -14,6 +14,7 @@
   "main": "build/src/server.js",
   "bin": "bin/start",
   "scripts": {
+    "prod": "node build/src/server.js",
     "start": "npm run tsc && node build/src/server.js",
     "debug": "npm run tsc && node --trace-warnings --inspect build/src/server.js --DEBUG true",
     "clean": "rm -rf build",

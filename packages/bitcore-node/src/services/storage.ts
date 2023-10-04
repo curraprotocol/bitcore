@@ -37,7 +37,9 @@ export class StorageService {
       let auth = dbUser !== '' && dbPass !== '' ? `${dbUser}:${dbPass}@` : '';
       const connectUrl = dbUrl
         ? dbUrl
-        : `mongodb://${auth}${dbHost}:${dbPort}/${dbName}?socketTimeoutMS=3600000&noDelay=true${dbReadPreference ? `?readPreference=${dbReadPreference}` : ''}`;
+        : `mongodb://${auth}${dbHost}:${dbPort}/${dbName}?socketTimeoutMS=3600000&noDelay=true${
+            dbReadPreference ? `?readPreference=${dbReadPreference}` : ''
+          }`;
       let attemptConnect = async () => {
         return MongoClient.connect(connectUrl, {
           keepAlive: true,
@@ -54,7 +56,7 @@ export class StorageService {
           clearInterval(attemptConnectId);
           this.connection.emit('CONNECTED');
           resolve(this.client);
-        } catch (err: any) {
+        } catch (err) {
           logger.error('%o', err);
           attempted++;
           if (attempted > 5) {
@@ -238,7 +240,7 @@ export class StorageService {
     const finalQuery = Object.assign({}, originalQuery, query);
     let cursor = model.collection
       .find(finalQuery, options)
-      .addCursorFlag('noCursorTimeout', true)
+      .addCursorFlag('noCursorTimeout', false)
       .stream({
         transform: transform || model._apiTransform.bind(model)
       });

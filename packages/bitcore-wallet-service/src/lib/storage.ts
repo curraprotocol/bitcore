@@ -12,11 +12,11 @@ import {
   Preferences,
   PushNotificationSub,
   Session,
-  TxConfirmationSub,
   TxNote,
   TxProposal,
   Wallet
 } from './model';
+import type { TxProposalLegacy } from './model/txproposal_legacy';
 
 const BCHAddressTranslator = require('./bchaddresstranslator'); // only for migration
 const $ = require('preconditions').singleton();
@@ -333,6 +333,24 @@ export class Storage {
         return this._completeTxData(walletId, TxProposal.fromObj(result), cb);
       }
     );
+  }
+
+  fetchTxsByIds(txIds: string[], cb: (err?: any, txs?: Array<TxProposal | TxProposalLegacy>) => void) {
+    if (!this.db) return cb();
+
+    this.db
+      .collection(collections.TXS)
+      .find({
+        id: { $in: txIds }
+      })
+      .toArray((err, result) => {
+        if (err) return cb(err);
+        if (!result) return cb();
+        const txs = _.map(result, tx => {
+          return TxProposal.fromObj(tx);
+        });
+        return cb(null, txs);
+      });
   }
 
   fetchTxByHash(hash, cb) {

@@ -182,7 +182,7 @@ export class GnosisApi {
     transactionStream = EVMTransactionStorage.collection
       .find(query)
       .sort({ blockTimeNormalized: 1 })
-      .addCursorFlag('noCursorTimeout', true);
+      .addCursorFlag('noCursorTimeout', false);
 
     if (multisigContractAddress) {
       const ethMultisigTransform = new MultisigRelatedFilterTransform(web3, multisigContractAddress, args.tokenAddress);

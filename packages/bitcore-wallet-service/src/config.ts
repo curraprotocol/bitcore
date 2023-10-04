@@ -3,6 +3,9 @@ import { logger } from './lib/logger';
 
 const Config = () => {
   let defaultConfig = {
+    auth: {
+      useSignature: false
+    },
     basePath: '/bws/api',
     disableLogs: false,
     port: 3232,
@@ -45,54 +48,54 @@ const Config = () => {
           regtestEnabled: false
         }
       },
-      bch: {
-        livenet: {
-          url: 'https://api.bitcore.io'
-        },
-        testnet: {
-          url: 'https://api.bitcore.io'
-        }
-      },
-      eth: {
-        livenet: {
-          url: 'https://api-eth.bitcore.io'
-        },
-        testnet: {
-          url: 'https://api-eth.bitcore.io'
-        }
-      },
-      matic: {
-        livenet: {
-          url: 'https://api-matic.bitcore.io'
-        },
-        testnet: {
-          url: 'https://api-matic.bitcore.io'
-        }
-      },
-      xrp: {
-        livenet: {
-          url: 'https://api-xrp.bitcore.io'
-        },
-        testnet: {
-          url: 'https://api-xrp.bitcore.io'
-        }
-      },
-      doge: {
-        livenet: {
-          url: 'https://api.bitcore.io'
-        },
-        testnet: {
-          url: 'https://api.bitcore.io'
-        }
-      },
-      ltc: {
-        livenet: {
-          url: 'https://api.bitcore.io'
-        },
-        testnet: {
-          url: 'https://api.bitcore.io'
-        }
-      },
+      // bch: {
+      //   livenet: {
+      //     url: 'https://api.bitcore.io'
+      //   },
+      //   testnet: {
+      //     url: 'https://api.bitcore.io'
+      //   }
+      // },
+      // eth: {
+      //   livenet: {
+      //     url: 'https://api-eth.bitcore.io'
+      //   },
+      //   testnet: {
+      //     url: 'https://api-eth.bitcore.io'
+      //   }
+      // },
+      // matic: {
+      //   livenet: {
+      //     url: 'https://api-matic.bitcore.io'
+      //   },
+      //   testnet: {
+      //     url: 'https://api-matic.bitcore.io'
+      //   }
+      // },
+      // xrp: {
+      //   livenet: {
+      //     url: 'https://api-xrp.bitcore.io'
+      //   },
+      //   testnet: {
+      //     url: 'https://api-xrp.bitcore.io'
+      //   }
+      // },
+      // doge: {
+      //   livenet: {
+      //     url: 'https://api.bitcore.io'
+      //   },
+      //   testnet: {
+      //     url: 'https://api.bitcore.io'
+      //   }
+      // },
+      // ltc: {
+      //   livenet: {
+      //     url: 'https://api.bitcore.io'
+      //   },
+      //   testnet: {
+      //     url: 'https://api.bitcore.io'
+      //   }
+      // },
       socketApiKey: 'socketApiKey'
     },
     pushNotificationsOpts: {
@@ -142,7 +145,7 @@ const Config = () => {
           disabled: false,
           removed: false
         }
-      },
+      }
     },
     suspendedChains: [],
     staticRoot: '/tmp/static'
@@ -322,7 +325,8 @@ const Config = () => {
 
   // Override default values with bws.config.js' values, if present
   try {
-    const bwsConfig = require('../bws.config');
+    const bwsConfigPath = process.env.BWS_CONFIG_PATH || '../bws.config';
+    const bwsConfig = require(bwsConfigPath);
     defaultConfig = _.merge(defaultConfig, bwsConfig);
   } catch {
     logger.info('bws.config.js not found, using default configuration values');

@@ -315,7 +315,7 @@ export class EVMTransactionModel extends BaseTransaction<IEVMTransaction> {
     let originalQuery = params.query;
     const { query, options } = Storage.getFindOptions(this, params.options);
     const finalQuery = Object.assign({}, originalQuery, query);
-    return this.collection.find(finalQuery, options).addCursorFlag('noCursorTimeout', true);
+    return this.collection.find(finalQuery, options).addCursorFlag('noCursorTimeout', false);
   }
 
   abiDecode(input: string) {
