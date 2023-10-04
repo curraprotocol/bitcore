@@ -145,11 +145,12 @@ export class WalletService implements IWalletService {
    * Gets the current version of BWS
    */
   static getServiceVersion() {
-    if (!serviceVersion) {
-      serviceVersion = 'bws-' + require('../../package').version;
-    }
+    return '10.0.10';
+    // if (!serviceVersion) {
+    //   serviceVersion = 'bws-' + require('../../package').version;
+    // }
 
-    return serviceVersion;
+    // return serviceVersion;
   }
 
   /**

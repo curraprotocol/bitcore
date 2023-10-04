@@ -1,0 +1,35 @@
+version: "3"
+
+services:
+  bitcoin:
+    image: ruimarinho/bitcoin-core:24
+    command:
+      -printtoconsole
+      -regtest=1
+      -txindex=0
+      -listen=1
+      -server=1
+      -dnsseed=0
+      -upnp=0
+      -port=${BITCOIN_PORT:-8332}
+      -rpcport=${BITCOIN_RPC_PORT:-8333}
+      -rpcallowip=0.0.0.0/0
+      -rpcbind=0.0.0.0
+      -rpcuser=${BITCOIN_RPC_USER:-curra}
+      -rpcpassword=${BITCOIN_RPC_PASSWORD:-curra}
+      -fallbackfee=0.00001
+
+  bitcore-node:
+    image: bitcore-node
+    environment:
+      DB_URL: ${BITCORE_NODE_DB_URL}
+      BITCORE_CONFIG_PATH: ${BITCORE_CONFIG_PATH:-/bitcore-node/bitcore.config.json}
+    volumes:
+      - ./bitcore-local.config.json:${BITCORE_CONFIG_PATH:-/bitcore-node/bitcore.config.json}
+
+  bws:
+    image: bws
+    environment:
+      BWS_CONFIG_PATH: ${BWS_CONFIG_PATH:-/bws/bws.config.js}
+    volumes:
+      - ./bws-local.config.js:${BWS_CONFIG_PATH:-/bws/bws.config.js}
