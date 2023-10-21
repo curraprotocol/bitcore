@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import express from 'express';
 import config from '../config';
 import { Config } from '../services/config';
-import { CacheMiddleware, CacheTimes, LogMiddleware, RateLimiter } from './middleware';
+import { CacheMiddleware, CacheTimes, LogMiddleware } from './middleware';
 import { Web3Proxy } from './web3';
 
 const app = express();
@@ -58,7 +58,7 @@ function getRouterFromFile(path) {
 app.use(cors());
 app.use(LogMiddleware());
 app.use(CacheMiddleware(CacheTimes.Second, CacheTimes.Second));
-app.use(RateLimiter('GLOBAL', 10, 200, 4000));
+// app.use(RateLimiter('GLOBAL', 10, 200, 4000));
 app.use('/api', getRouterFromFile('status'));
 
 app.use('/api/:chain/:network', (req: Request, resp: Response, next: any) => {

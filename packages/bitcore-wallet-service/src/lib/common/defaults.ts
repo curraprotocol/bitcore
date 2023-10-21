@@ -209,27 +209,27 @@ export const Defaults = {
   SESSION_EXPIRATION: 1 * 60 * 60, // 1 hour to session expiration
 
   RateLimit: {
-    createWallet: {
-      windowMs: 60 * 60 * 1000, // hour window
-      delayAfter: 8, // begin slowing down responses after the 3rd request
-      delayMs: 3000, // slow down subsequent responses by 3 seconds per request
-      max: 15, // start blocking after 20 request
-      message: 'Too many wallets created from this IP, please try again after an hour'
-    },
-    estimateFee: {
-      windowMs: 60 * 10 * 1000, // 10 min window
-      delayAfter: 5, // begin slowing down responses after the 3rd request
-      delayMs: 300, // slow down subsequent responses by 3 seconds per request
+    // createWallet: {
+    //   windowMs: 60 * 60 * 1000, // hour window
+    //   delayAfter: 8, // begin slowing down responses after the 3rd request
+    //   delayMs: 3000, // slow down subsequent responses by 3 seconds per request
+    //   max: 15, // start blocking after 20 request
+    //   message: 'Too many wallets created from this IP, please try again after an hour'
+    // },
+    // estimateFee: {
+    //   windowMs: 60 * 10 * 1000, // 10 min window
+    //   delayAfter: 5, // begin slowing down responses after the 3rd request
+    //   delayMs: 300, // slow down subsequent responses by 3 seconds per request
 
-      max: 10, // start blocking after 200 request
-      message: 'Too many request'
-    }
+    //   max: 10, // start blocking after 200 request
+    //   message: 'Too many request'
+    // }
 
     // otherPosts: {
     //   windowMs: 60 * 60 * 1000, // 1 hour window
     //   max: 1200 , // 1 post every 3 sec average, max.
     // },
-  },
+  } as Record<string, any>,
   COIN: 'btc',
   EVM_COIN: 'eth',
   CHAIN: 'btc',

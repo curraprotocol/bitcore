@@ -66,7 +66,7 @@ const Config = function(): ConfigType {
     services: {
       api: {
         rateLimiter: {
-          disabled: false,
+          disabled: true,
           whitelist: ['::ffff:127.0.0.1', '::1']
         },
         wallets: {

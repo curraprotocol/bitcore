@@ -5,8 +5,12 @@
     "printWidth": 120
   },
   "scripts": {
-    "docker:node": "docker build -t bitcore-node packages/bitcore-node",
-    "docker:bws": "docker build -t bitcore-wallet-service packages/bitcore-wallet-service",
+    "docker:node": "docker build --platform linux/amd64 -t bitcore-node packages/bitcore-node",
+    "docker:bws": "docker build --platform linux/amd64 -t bws packages/bitcore-wallet-service",
+
+    "docker:node:arm": "docker build --platform linux/arm64 -t bitcore-node packages/bitcore-node",
+    "docker:bws:arm": "docker build --platform linux/arm64 -t bws packages/bitcore-wallet-service",
+
     "build": "docker build -t bitcore-node . ",
     "watch": "./node_modules/.bin/lerna run watch --parallel",
     "postinstall": "npm run bootstrap && npm run compile",

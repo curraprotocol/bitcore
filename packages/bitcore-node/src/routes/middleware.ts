@@ -1,7 +1,7 @@
 import * as express from 'express';
 import logger from '../logger';
-import { RateLimitStorage } from '../models/rateLimit';
-import { Config } from '../services/config';
+// import { RateLimitStorage } from '../models/rateLimit';
+// import { Config } from '../services/config';
 
 type TimedRequest = {
   startTime?: Date;
@@ -78,34 +78,34 @@ export function CacheMiddleware(serverSeconds = CacheTimes.Second, browserSecond
   };
 }
 
-function isWhiteListed(whitelist: Array<string> = [], ip: string) {
-  return whitelist.some(listItem => ip.startsWith(listItem));
-}
+// function isWhiteListed(whitelist: Array<string> = [], ip: string) {
+//   return whitelist.some(listItem => ip.startsWith(listItem));
+// }
 
-export function RateLimiter(method: string, perSecond: number, perMinute: number, perHour: number) {
-  return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    try {
-      const identifier = req.header('CF-Connecting-IP') || req.socket.remoteAddress || '';
-      const rateLimiter = Config.for('api').rateLimiter;
-      const whitelist = rateLimiter && rateLimiter.whitelist;
-      const isDisabled = rateLimiter && rateLimiter.disabled;
-      if (isDisabled || isWhiteListed(whitelist, identifier)) {
-        return next();
-      }
-      let [perSecondResult, perMinuteResult, perHourResult] = await RateLimitStorage.incrementAndCheck(
-        identifier,
-        method
-      );
-      if (
-        perSecondResult.value!.count > perSecond ||
-        perMinuteResult.value!.count > perMinute ||
-        perHourResult.value!.count > perHour
-      ) {
-        return res.status(429).send('Rate Limited');
-      }
-    } catch (err) {
-      logger.error('Rate Limiter failed');
-    }
-    return next();
-  };
-}
+// export function RateLimiter(method: string, perSecond: number, perMinute: number, perHour: number) {
+//   return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+//     try {
+//       const identifier = req.header('CF-Connecting-IP') || req.socket.remoteAddress || '';
+//       const rateLimiter = Config.for('api').rateLimiter;
+//       const whitelist = rateLimiter && rateLimiter.whitelist;
+//       const isDisabled = rateLimiter && rateLimiter.disabled;
+//       if (isDisabled || isWhiteListed(whitelist, identifier)) {
+//         return next();
+//       }
+//       let [perSecondResult, perMinuteResult, perHourResult] = await RateLimitStorage.incrementAndCheck(
+//         identifier,
+//         method
+//       );
+//       if (
+//         perSecondResult.value!.count > perSecond ||
+//         perMinuteResult.value!.count > perMinute ||
+//         perHourResult.value!.count > perHour
+//       ) {
+//         return res.status(429).send('Rate Limited');
+//       }
+//     } catch (err) {
+//       logger.error('Rate Limiter failed');
+//     }
+//     return next();
+//   };
+// }
